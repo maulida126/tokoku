@@ -1,0 +1,31 @@
+body {
+    background: #f4f6f9;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+.navbar-brand { letter-spacing: 1px; }
+
+.stat-card {
+    border: none;
+    border-radius: 12px;
+    transition: transform .2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+.stat-card:hover { transform: translateY(-3px); }
+
+.card { border-radius: 10px; border: none; }
+
+table thead th {
+    font-weight: 600;
+    font-size: .9rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.btn { border-radius: 8px; }
+
+@media print {
+    .navbar, .btn, form, .alert { display: none !important; }
+    body { background: #fff; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+}
