@@ -1,128 +1,165 @@
 <?php
 require 'config.php';
 $pesan = "";
+$isAdmin = $_SESSION['role'] === 'admin';
 
 // ===== 1. TAMBAH (via SP) =====
 if (isset($_POST['tambah'])) {
-    $stmt = $conn->prepare("CALL TambahPelanggan(?, ?)");
-    $stmt->bind_param("ss", $_POST['nama'], $_POST['kota']);
-    if ($stmt->execute()) {
-        $pesan = "<div class='alert alert-success'><i class='bi bi-check-circle'></i> Pelanggan berhasil ditambahkan!</div>";
+    if (!validCsrfToken($_POST['csrf_token'] ?? null)) {
+        http_response_code(400);
+        $pesan = "<div class='alert alert-danger'>Form sudah kedaluwarsa. Muat ulang halaman lalu coba kembali.</div>";
+    } else {
+        $nama = trim($_POST['nama'] ?? '');
+        $kota = trim($_POST['kota'] ?? '');
+        if ($nama === '' || $kota === '') {
+            $pesan = "<div class='alert alert-danger'>Nama dan kota wajib diisi.</div>";
+        } else {
+            $stmt = $conn->prepare("CALL TambahPelanggan(?, ?)");
+            $stmt->bind_param("ss", $nama, $kota);
+            if ($stmt->execute()) {
+                $pesan = "<div class='alert alert-success'><i class='bi bi-check-circle'></i> Pelanggan berhasil ditambahkan!</div>";
+            }
+            $stmt->close();
+            clearResults($conn);
+        }
     }
-    $stmt->close();
-    clearResults($conn);
 }
 
 // ===== 2. HAPUS =====
-if (isset($_GET['hapus'])) {
-    $id = intval($_GET['hapus']);
-    try {
-        $conn->query("DELETE FROM tbl_pelanggan WHERE id_pelanggan=$id");
-        $pesan = "<div class='alert alert-success'><i class='bi bi-check-circle'></i> Pelanggan dihapus.</div>";
-    } catch (Exception $e) {
-        $pesan = "<div class='alert alert-danger'><i class='bi bi-x-circle'></i> Gagal hapus: pelanggan masih punya transaksi.</div>";
+if (isset($_POST['hapus']) && $isAdmin) {
+    if (!validCsrfToken($_POST['csrf_token'] ?? null)) {
+        http_response_code(400);
+        $pesan = "<div class='alert alert-danger'>Form sudah kedaluwarsa. Muat ulang halaman lalu coba kembali.</div>";
+    } else {
+        $id = filter_var($_POST['hapus'], FILTER_VALIDATE_INT);
+        if ($id) {
+            try {
+                $stmt = $conn->prepare("DELETE FROM tbl_pelanggan WHERE id_pelanggan = ?");
+                $stmt->bind_param("i", $id);
+                if ($stmt->execute()) {
+                    $pesan = "<div class='alert alert-success'><i class='bi bi-check-circle'></i> Pelanggan dihapus.</div>";
+                }
+                $stmt->close();
+            } catch (mysqli_sql_exception $e) {
+                if ($e->getCode() !== 1451) {
+                    throw $e;
+                }
+                $pesan = "<div class='alert alert-danger'><i class='bi bi-x-circle'></i> Pelanggan tidak dapat dihapus karena memiliki riwayat transaksi.</div>";
+            }
+        }
     }
 }
 
-// ===== 3. HITUNG TOTAL (OUT param) — panggil DULU =====
-$conn->query("CALL HitungPelanggan(@jumlah)");
-$jumlah = $conn->query("SELECT @jumlah AS n")->fetch_assoc()['n'];
-clearResults($conn);
-
-// ===== 4. AMBIL DATA =====
-$keyword = $_GET['q'] ?? '';
-$rows = [];
-
-if ($keyword !== '' && is_numeric($keyword)) {
-    $stmt = $conn->prepare("CALL CariPelanggan(?)");
-    $stmt->bind_param("i", $keyword);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    while ($r = $res->fetch_assoc()) $rows[] = $r;
-    $stmt->close();
-    clearResults($conn);
+$keyword = trim($_GET['q'] ?? '');
+$jumlah = (int)$conn->query("SELECT COUNT(*) AS n FROM tbl_pelanggan")->fetch_assoc()['n'];
+$sql = "SELECT p.id_pelanggan, p.nama_pelanggan, p.kota,
+               COUNT(t.id_transaksi) AS total_transaksi,
+               COALESCE(SUM(t.total_belanja), 0) AS total_belanja
+        FROM tbl_pelanggan p
+        LEFT JOIN tbl_transaksi t ON t.id_pelanggan = p.id_pelanggan";
+if ($keyword !== '') {
+    $cari = '%' . $keyword . '%';
+    $stmt = $conn->prepare(
+        $sql . " WHERE p.nama_pelanggan LIKE ? OR p.kota LIKE ? OR CAST(p.id_pelanggan AS CHAR) LIKE ?
+        GROUP BY p.id_pelanggan, p.nama_pelanggan, p.kota
+        ORDER BY p.id_pelanggan DESC"
+    );
+    $stmt->bind_param("sss", $cari, $cari, $cari);
 } else {
-    $res = $conn->query("CALL TampilPelanggan()");
-    if ($res) {
-        while ($r = $res->fetch_assoc()) $rows[] = $r;
-        $res->free();
-    }
-    clearResults($conn);
+    $stmt = $conn->prepare(
+        $sql . " GROUP BY p.id_pelanggan, p.nama_pelanggan, p.kota
+        ORDER BY p.id_pelanggan DESC"
+    );
 }
+$stmt->execute();
+$resultPelanggan = $stmt->get_result();
+$rows = [];
+while ($row = $resultPelanggan->fetch_assoc()) {
+    $rows[] = $row;
+}
+$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pelanggan - TokoKu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="management-page">
 <?php include 'navbar.php'; ?>
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-people"></i> Data Pelanggan</h3>
-        <span class="badge bg-primary fs-6">Total: <?= $jumlah ?></span>
-    </div>
-
-    <?= $pesan ?>
-
-    <div class="card shadow-sm mb-3">
-        <div class="card-body">
-            <form class="row g-2" method="post">
-                <div class="col-md-4">
-                    <input type="text" name="nama" class="form-control" placeholder="Nama Pelanggan" required>
-                </div>
-                <div class="col-md-4">
-                    <input type="text" name="kota" class="form-control" placeholder="Kota" required>
-                </div>
-                <div class="col-md-4">
-                    <button name="tambah" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Tambah</button>
-                </div>
-            </form>
+<main class="management-container">
+    <?php if ($pesan !== ''): ?><div class="management-alert"><?= $pesan ?></div><?php endif; ?>
+    <header class="management-heading">
+        <div>
+            <span class="management-eyebrow"><i class="bi bi-people"></i> DATA TOKO</span>
+            <h1>Pelanggan</h1>
+            <p>Kelola informasi dan riwayat belanja pelanggan TokoKu.</p>
         </div>
-    </div>
+        <span class="management-count"><i class="bi bi-person-check"></i> <?= number_format($jumlah, 0, ',', '.') ?> pelanggan</span>
+    </header>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form class="mb-3" method="get">
-                <div class="input-group">
-                    <input type="number" name="q" class="form-control" placeholder="Cari ID pelanggan..." value="<?= htmlspecialchars($keyword) ?>">
-                    <button class="btn btn-outline-secondary"><i class="bi bi-search"></i> Cari</button>
-                    <a href="pelanggan.php" class="btn btn-outline-dark">Reset</a>
-                </div>
-            </form>
+    <section class="management-summary">
+        <span class="management-summary-icon"><i class="bi bi-person-lines-fill"></i></span>
+        <span><small>Jumlah pelanggan terdaftar</small><strong><?= number_format($jumlah, 0, ',', '.') ?></strong></span>
+    </section>
 
-            <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead class="table-dark">
-                        <tr><th>ID</th><th>Nama</th><th>Kota</th><th class="text-center">Aksi</th></tr>
-                    </thead>
-                    <tbody>
-                    <?php if (count($rows) > 0): ?>
-                        <?php foreach ($rows as $row): ?>
-                        <tr>
-                            <td><?= $row['id_pelanggan'] ?></td>
-                            <td><?= htmlspecialchars($row['nama_pelanggan']) ?></td>
-                            <td><span class="badge bg-info text-dark"><?= htmlspecialchars($row['kota']) ?></span></td>
-                            <td class="text-center">
-                                <a href="transaksi.php?pelanggan=<?= $row['id_pelanggan'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-cart"></i></a>
-                                <a href="?hapus=<?= $row['id_pelanggan'] ?>" onclick="return confirm('Hapus pelanggan ini?')" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr><td colspan="4" class="text-center text-muted py-4">Tidak ada data.</td></tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+    <section class="management-panel add-customer-panel">
+        <div class="management-panel-heading"><span class="management-panel-icon"><i class="bi bi-person-plus"></i></span><div><h2>Tambah pelanggan</h2><p>Masukkan data pelanggan baru untuk memulai transaksi.</p></div></div>
+        <form class="customer-add-form" method="post">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <label><span>Nama pelanggan</span><input type="text" name="nama" class="form-control" maxlength="100" placeholder="Contoh: Budi Santoso" required></label>
+            <label><span>Kota</span><input type="text" name="kota" class="form-control" maxlength="50" placeholder="Contoh: Ponorogo" required></label>
+            <button name="tambah" class="management-primary-button"><i class="bi bi-plus-lg"></i> Simpan pelanggan</button>
+        </form>
+    </section>
+
+    <section class="management-panel customer-list-panel">
+        <div class="management-panel-heading">
+            <span class="management-panel-icon"><i class="bi bi-card-list"></i></span>
+            <div><h2>Daftar pelanggan</h2><p>Informasi dan ringkasan aktivitas belanja.</p></div>
         </div>
-    </div>
-</div>
+        <form class="management-search" method="get">
+            <i class="bi bi-search"></i>
+            <input type="search" name="q" value="<?= htmlspecialchars($keyword) ?>" placeholder="Cari nama, kota, atau ID pelanggan">
+            <?php if ($keyword !== ''): ?><a href="pelanggan.php" class="search-reset">Reset</a><?php endif; ?>
+            <button aria-label="Cari pelanggan"><i class="bi bi-arrow-right"></i></button>
+        </form>
+
+        <div class="management-table-wrap">
+            <table class="table management-table align-middle mb-0">
+                <thead><tr><th>Pelanggan</th><th>Kota</th><th class="text-center">Transaksi</th><th class="text-end">Total belanja</th><th class="text-end">Aksi</th></tr></thead>
+                <tbody>
+                <?php if ($rows): ?>
+                    <?php foreach ($rows as $row): ?>
+                    <tr>
+                        <td><span class="management-person"><span class="management-avatar"><?= htmlspecialchars(strtoupper(substr($row['nama_pelanggan'] ?? '?', 0, 1))) ?></span><span><strong><?= htmlspecialchars($row['nama_pelanggan'] ?? 'Pelanggan') ?></strong><small>ID #<?= (int)$row['id_pelanggan'] ?></small></span></span></td>
+                        <td><span class="management-city"><i class="bi bi-geo-alt"></i> <?= htmlspecialchars($row['kota'] ?? '-') ?></span></td>
+                        <td class="text-center"><span class="management-pill"><?= (int)$row['total_transaksi'] ?></span></td>
+                        <td class="text-end management-money"><?= rupiah($row['total_belanja']) ?></td>
+                        <td class="text-end">
+                            <a href="transaksi.php?pelanggan=<?= (int)$row['id_pelanggan'] ?>" class="management-action" title="Lihat transaksi pelanggan"><i class="bi bi-receipt"></i></a>
+                            <?php if ($isAdmin): ?>
+                                <form method="post" class="d-inline" onsubmit="return confirm('Hapus pelanggan ini?')">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                                    <button name="hapus" value="<?= (int)$row['id_pelanggan'] ?>" class="management-action is-danger" title="Hapus pelanggan"><i class="bi bi-trash"></i></button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr><td colspan="5"><div class="management-empty"><i class="bi bi-person-exclamation"></i><strong>Pelanggan tidak ditemukan</strong><span>Coba kata kunci lain atau tambahkan pelanggan baru.</span></div></td></tr>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>

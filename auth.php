@@ -21,4 +21,25 @@ function cekRole($role) {
 function isLogin() {
     return isset($_SESSION['user_id']);
 }
+
+function csrfToken() {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['csrf_token'];
+}
+
+function validCsrfToken($token) {
+    return isset($_SESSION['csrf_token']) && is_string($token)
+        && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+function halamanBerandaRole() {
+    if (($_SESSION['role'] ?? '') === 'pelanggan') {
+        return 'belanja.php';
+    }
+
+    return ($_SESSION['role'] ?? '') === 'kasir' ? 'transaksi.php' : 'index.php';
+}
 ?>

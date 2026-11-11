@@ -2,7 +2,7 @@
 require 'config.php';
 
 if (isLogin()) {
-    header("Location: index.php");
+    header("Location: " . halamanBerandaRole());
     exit;
 }
 
@@ -22,13 +22,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id']      = $user['id_user'];
-            $_SESSION['username']     = $user['username'];
-            $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
-            $_SESSION['role']         = $user['role'];
+            $role = in_array($user['role'], ['', 'user'], true) ? 'kasir' : $user['role'];
+            if ($role === 'pelanggan' && empty($user['id_pelanggan'])) {
+                $error = "Akun pelanggan belum terhubung ke data pelanggan. Hubungi admin.";
+            } else {
+                session_regenerate_id(true);
+                $_SESSION['user_id']      = $user['id_user'];
+                $_SESSION['username']     = $user['username'];
+                $_SESSION['nama_lengkap'] = $user['nama_lengkap'] ?? $user['nama'] ?? $user['username'];
+                $_SESSION['role']         = $role;
+                $_SESSION['id_pelanggan'] = $user['id_pelanggan'];
 
-            header("Location: index.php");
-            exit;
+                header("Location: " . halamanBerandaRole());
+                exit;
+            }
         } else {
             $error = "Username atau password salah!";
         }
@@ -43,46 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Login - TokoKu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        body {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-        }
-        .login-card {
-            width: 100%;
-            max-width: 420px;
-            border: none;
-            border-radius: 16px;
-            box-shadow: 0 20px 50px rgba(0,0,0,.25);
-            overflow: hidden;
-        }
-        .login-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            padding: 30px;
-            text-align: center;
-        }
-        .login-header i { font-size: 3rem; }
-        .login-body { padding: 30px; background: #fff; }
-        .form-control { border-radius: 10px; padding: 12px; }
-        .btn-login {
-            border-radius: 10px;
-            padding: 12px;
-            font-weight: 600;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-        }
-        .btn-login:hover { opacity: .9; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="auth-page">
 
-<div class="card login-card">
-    <div class="login-header">
+<div class="card auth-card login-card">
+    <div class="auth-header login-header">
         <i class="bi bi-shop-window"></i>
         <h3 class="mt-2 mb-0 fw-bold">TokoKu</h3>
         <p class="mb-0 small opacity-75">Silakan login untuk melanjutkan</p>
@@ -114,10 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </button>
                 </div>
             </div>
-            <button class="btn btn-primary btn-login w-100 text-white">
+            <button class="btn auth-submit btn-login w-100 text-white">
                 <i class="bi bi-box-arrow-in-right"></i> Login
             </button>
         </form>
+
+        <p class="text-center mt-3 mb-0">
+            Belum punya akun? <a href="daftar.php">Daftar sebagai pelanggan</a>
+        </p>
 
         <hr class="my-4">
         <p class="text-center text-muted small mb-0">
