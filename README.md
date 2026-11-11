@@ -1,86 +1,168 @@
 # 🛒 TokoKu - Sistem Informasi Toko Berbasis Web
 
-Aplikasi web sederhana untuk manajemen data toko (pelanggan, transaksi, laporan) yang dibangun menggunakan **PHP Native** dan **MySQL**. Proyek ini dibuat untuk memenuhi tugas mata kuliah Basis Data / Pemrograman Web.
+Aplikasi web sederhana untuk manajemen data toko (pelanggan, transaksi, produk, stok, dan laporan) yang dibangun menggunakan **PHP Native** dan **MySQL**.
 
 ## ✨ Fitur Utama
 
-- 🔐 **Sistem Login & Logout** (Multi-user dengan password hash Bcrypt)
-- 📊 **Dashboard Overview** (Ringkasan pendapatan bulanan, tren 7 hari, transaksi terbaru, produk terlaris, dan pelanggan terbaik)
-- 👥 **Manajemen Pelanggan** (Tambah, Hapus, Cari via Stored Procedure)
-- 🛒 **Manajemen Transaksi** (Lihat daftar transaksi & detail item belanja)
-- 📦 **Produk & Persediaan** (Admin menambahkan barang dan stok; stok dipotong otomatis saat pembelian berhasil)
-- 📑 **Laporan Transaksi** (Filter per pelanggan + fitur Cetak/Print)
-- 🗄️ **Integrasi Database Lanjutan**:
-  - Menggunakan **Stored Procedure** (`TambahPelanggan`, `HitungPelanggan`, `LaporanTransaksi`, dll).
-  - Menggunakan **View** (`view_transaksi_pelanggan`, `view_total_belanja`).
+- 🔐 **Login & Logout** — Multi-user dengan password hash Bcrypt.
+- 📊 **Dashboard Overview** — Ringkasan pendapatan bulanan, tren penjualan 7 hari, transaksi terbaru, produk terlaris, dan pelanggan terbaik.
+- 👥 **Manajemen Pelanggan** — Tambah, hapus, dan cari pelanggan melalui Stored Procedure.
+- 🛒 **Manajemen Transaksi** — Melihat daftar transaksi dan detail item belanja.
+- 📦 **Produk & Persediaan** — Menambahkan barang, mengelola stok, dan mengurangi stok otomatis saat pembelian berhasil.
+- 🧾 **Pembayaran** — Mendukung pembayaran tunai, transfer, dan QRIS.
+- 🖼️ **Foto Produk** — Upload foto produk dengan format JPG, PNG, dan WEBP.
+- 📑 **Laporan Transaksi** — Filter transaksi berdasarkan pelanggan dan fitur cetak laporan.
+- 👤 **Manajemen Pengguna** — Mengelola akun admin dan kasir.
+- 🛍️ **Katalog Pelanggan** — Pelanggan dapat melihat produk, membuat pesanan, dan melihat pesanan miliknya.
+- 🔄 **Pembaruan Stok Otomatis** — Tampilan stok diperbarui setiap 10 detik.
+- 🗄️ **Integrasi Database Lanjutan** — Menggunakan Stored Procedure dan View.
 
 ## 🛠️ Teknologi yang Digunakan
 
-- **Bahasa Pemrograman:** PHP 8.x (Native)
-- **Database:** MySQL / MariaDB
-- **Framework CSS:** Bootstrap 5.3
-- **Ikon:** Bootstrap Icons
-- **Web Server:** Apache (XAMPP / Laragon)
+- 💻 **Bahasa Pemrograman:** PHP 8.x (Native)
+- 🗄️ **Database:** MySQL / MariaDB
+- 🎨 **Framework CSS:** Bootstrap 5.3
+- 🧩 **Ikon:** Bootstrap Icons
+- 🌐 **Web Server:** Apache (XAMPP / Laragon)
+- 🔒 **Keamanan:** Password Hash Bcrypt dan validasi transaksi.
+
+## 📁 Struktur Database
+
+Database yang digunakan bernama `db_tokoku`.
+
+Beberapa tabel utama:
+
+- 👤 `tbl_user` — Menyimpan data pengguna.
+- 👥 `tbl_pelanggan` — Menyimpan data pelanggan.
+- 📦 Tabel produk — Menyimpan katalog barang dan stok.
+- 🛒 Tabel transaksi — Menyimpan data transaksi.
+- 🧾 Tabel detail transaksi — Menyimpan rincian barang yang dibeli.
 
 ## 🚀 Cara Instalasi & Menjalankan
 
-Ikuti langkah-langkah berikut untuk menjalankan proyek di komputer Anda:
-
 ### 1. Persyaratan Sistem
-- Sudah menginstall **XAMPP** (atau Laragon).
-- Browser modern (Chrome, Edge, Firefox).
 
-### 2. Clone / Download Proyek
-Pindahkan seluruh folder `tokoku` ke dalam direktori web server Anda:
-- XAMPP: `C:\xampp\htdocs\tokoku`
-- Laragon: `C:\laragon\www\tokoku`
+- XAMPP atau Laragon.
+- PHP versi 8.x.
+- MySQL / MariaDB.
+- Browser modern seperti Chrome, Edge, atau Firefox.
+
+### 2. Download Proyek
+
+Pindahkan folder `tokoku` ke direktori web server:
+
+- **XAMPP:** `C:\xampp\htdocs\tokoku`
+- **Laragon:** `C:\laragon\www\tokoku`
 
 ### 3. Import Database
-1. Buka browser dan akses `http://localhost/phpmyadmin`.
-2. Buat database baru dengan nama `db_tokoku`.
-3. Klik tab **Import**, pilih file `db_tokoku (2).sql` yang sudah disediakan.
-4. Klik **Go / Kirim** untuk mengimport struktur beserta data awalnya.
 
-### 4. Buat Tabel User (Login)
-Jika tabel `tbl_user` belum ada, jalankan query SQL berikut di tab SQL phpMyAdmin:
+1. Jalankan Apache dan MySQL.
+2. Buka `http://localhost/phpmyadmin`.
+3. Buat database bernama `db_tokoku`.
+4. Pilih database tersebut.
+5. Klik menu **Import**.
+6. Pilih file `db_tokoku (2).sql`.
+7. Klik **Import / Go**.
 
-```sql
-CREATE TABLE `tbl_user` (
-  `id_user` int(11) NOT NULL AUTO_INCREMENT,
-  `nama` varchar(100) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `role` enum('admin','kasir','pelanggan') NOT NULL DEFAULT 'pelanggan',
-  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id_user`),
-  UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+### 4. Buat Tabel User
 
-INSERT INTO `tbl_user` (`nama`, `username`, `password`, `role`) VALUES
-('Administrator', 'admin', '$2y$10$PKteaysSbOSRA41UZkCKt.bvEzRdJae78562OE1J0w8heb60VYT82', 'admin')
-ON DUPLICATE KEY UPDATE
-  `password` = '$2y$10$PKteaysSbOSRA41UZkCKt.bvEzRdJae78562OE1J0w8heb60VYT82',
-  `nama` = 'Administrator',
-  `role` = 'admin';
-```
+Jika tabel `tbl_user` belum tersedia, jalankan query SQL pembuatan tabel dan akun administrator yang disediakan pada dokumentasi instalasi proyek.
 
-Query di atas juga memperbaiki akun `admin` yang sudah ada, sehingga password default `admin123` dapat digunakan untuk masuk ke dashboard.
+Akun administrator awal:
 
-### 5. Aktifkan Role, Pembayaran, dan Katalog Barang
-Setelah tabel `tbl_user` dibuat, import/jalankan file `upgrade_pelanggan.sql` satu kali melalui phpMyAdmin. File ini menyiapkan tepat tiga role, menghubungkan akun pelanggan dengan data pelanggan, dan membuat katalog barang awal. Akun lama dengan role `user` akan diubah menjadi `kasir`.
+- 👤 Username: `admin`
+- 🔑 Password: `admin123`
+- 🛡️ Role: `admin`
 
-- **Admin:** dapat mengakses dashboard, data pelanggan, pembayaran/transaksi, laporan, serta membuat akun kasir dari menu **Pengguna**.
-- **Admin:** juga dapat menambah barang dan stok gudang dari menu **Produk & Stok**.
-- **Kasir:** dapat menambahkan pelanggan, menambah stok barang yang sudah terdaftar dari menu **Produk & Stok**, serta memproses pembayaran dari barang katalog dengan metode tunai, transfer, atau QRIS. Penambahan barang baru hanya dapat dilakukan admin.
-- **Pelanggan:** dapat mendaftar, melihat katalog yang disediakan TokoKu, membuat pesanan, dan melihat pesanan miliknya saja.
+### 5. Upgrade Database Pelanggan
 
-### 6. Aktifkan Persediaan Barang
-Pada database yang sudah pernah menjalankan `upgrade_pelanggan.sql`, jalankan `upgrade_stok.sql` satu kali melalui phpMyAdmin. Instalasi baru juga dapat menjalankan file ini; kolom stok tidak akan dibuat dua kali.
+Jalankan file `upgrade_pelanggan.sql` satu kali melalui phpMyAdmin.
 
-Barang baru dibuat melalui menu **Produk & Stok**, termasuk harga jual dan jumlah awal di gudang. Barang lama yang sudah ada saat migrasi mendapat stok awal `0`; masukkan jumlah gudang sebenarnya melalui menu tersebut. Stok yang sudah tersedia dapat ditambah saat barang masuk gudang. Pelanggan melihat katalog dan status stok barang; barang yang stoknya habis tidak dapat dipesan. Pembelian kasir maupun pelanggan mengurangi stok otomatis, dan pesanan ditolak jika stok tidak mencukupi. Harga serta stok divalidasi dari database saat transaksi diproses.
+File ini berfungsi untuk:
 
-Persediaan yang sama digunakan oleh admin, kasir, dan pelanggan. Halaman inventaris, pembayaran kasir, dan katalog pelanggan memperbarui tampilan stok secara otomatis setiap 10 detik; transaksi tetap memeriksa stok terbaru di server sebelum disimpan.
+- Mengatur tiga role pengguna: admin, kasir, dan pelanggan.
+- Menghubungkan akun pelanggan dengan data pelanggan.
+- Menyiapkan katalog barang awal.
 
-Untuk menampilkan foto barang, jalankan `upgrade_gambar_produk.sql` satu kali melalui phpMyAdmin. Admin dapat mengunggah foto saat menambah barang atau memilih foto barang lama dari menu **Produk & Stok**. Format JPG, PNG, dan WEBP didukung dengan batas ukuran 5 MB; foto tersebut ditampilkan di katalog pelanggan dan pembayaran kasir. Jika foto belum diunggah, aplikasi menampilkan ikon bawaan.
+### 6. Upgrade Database Stok
 
-Pembayaran QRIS pada kasir menampilkan kode dan total keranjang. Untuk mengaktifkannya, admin perlu menempatkan gambar QRIS resmi toko di `assets/qris-tokoku.png`. Tanpa gambar tersebut, sistem tidak mengizinkan transaksi QRIS dicatat.
+Jalankan file `upgrade_stok.sql` satu kali.
+
+Fungsinya:
+
+- Menambahkan sistem persediaan barang.
+- Mengatur stok awal produk.
+- Mengelola penambahan stok.
+- Mengurangi stok secara otomatis saat transaksi berhasil.
+- Mencegah pembelian melebihi stok tersedia.
+
+### 7. Upgrade Foto Produk
+
+Jalankan file `upgrade_gambar_produk.sql` satu kali melalui phpMyAdmin.
+
+Format foto yang didukung:
+
+- JPG
+- PNG
+- WEBP
+
+Ukuran maksimal foto: **5 MB**.
+
+### 8. Konfigurasi QRIS
+
+Untuk mengaktifkan pembayaran QRIS, tempatkan gambar QRIS resmi toko pada lokasi:
+
+`assets/qris-tokoku.png`
+
+Jika gambar belum tersedia, pembayaran QRIS tidak dapat diproses.
+
+### 9. Jalankan Aplikasi
+
+Buka browser dan akses:
+
+`http://localhost/tokoku`
+
+## 👥 Hak Akses Pengguna
+
+| Role | Hak Akses |
+|---|---|
+| 🛡️ Admin | Dashboard, pelanggan, transaksi, laporan, pengguna, produk, dan stok |
+| 🧑‍💼 Kasir | Pelanggan, stok barang terdaftar, dan pembayaran |
+| 🛍️ Pelanggan | Katalog produk, pemesanan, dan riwayat pesanan sendiri |
+
+## 🗄️ Integrasi Database Lanjutan
+
+Aplikasi menggunakan fitur database MySQL berikut:
+
+- ⚙️ **Stored Procedure** — `TambahPelanggan`, `HitungPelanggan`, `LaporanTransaksi`, dan lainnya.
+- 👁️ **View** — `view_transaksi_pelanggan` dan `view_total_belanja`.
+- 🔄 **Automatic Stock Update** — Pengurangan stok ketika transaksi berhasil.
+- 🔍 **Data Validation** — Validasi harga dan stok langsung dari database.
+
+## 🔒 Keamanan Sistem
+
+- Password disimpan menggunakan Bcrypt.
+- Validasi input pengguna.
+- Penggunaan prepared statement.
+- Pembatasan akses berdasarkan role.
+- Validasi stok sebelum transaksi disimpan.
+- Pelanggan hanya dapat melihat pesanan miliknya sendiri.
+
+## 🎯 Tujuan Pembuatan
+
+Proyek TokoKu dibuat sebagai penerapan materi **Basis Data dan Pemrograman Web**, khususnya:
+
+- CRUD (Create, Read, Update, Delete).
+- Relasi antar tabel.
+- Primary Key dan Foreign Key.
+- Stored Procedure.
+- Database View.
+- Transaksi database.
+- Manajemen persediaan.
+- Sistem autentikasi dan otorisasi.
+
+## 👨‍💻 Penutup
+
+TokoKu merupakan aplikasi pengelolaan toko berbasis web yang mengintegrasikan PHP Native dan MySQL untuk membantu proses pengelolaan pelanggan, produk, persediaan, transaksi, serta laporan penjualan secara lebih terstruktur.
+
+**© 2026 TokoKu - Sistem Informasi Toko Berbasis Web**
